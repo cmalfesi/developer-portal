@@ -33,10 +33,10 @@ In the event that there is more than 1 winning option (ie. more than 1 option sh
 A line can be expressed as `Y = tX + C`, where `t` is the gradient, and `C` shifts the line vertically up/down.
 
 ### Variables
-`winningOption`: Campaign option that received the most votes
-`totalVotes`: Total amount of votes received for a campaign
-`votedPercentage`: Percentage of votes (out of the total KNC supply at the time of the campaign)
-`minThreshold`: Minimum percentage (out of all campaign votes) needed for the winning option to be valid
+- `winningOption`: Campaign option that received the most votes
+- `totalVotes`: Total amount of votes received for a campaign
+- `votedPercentage`: Percentage of votes (out of the total KNC supply at the time of the campaign)
+- `minThreshold`: Minimum percentage (out of all campaign votes) needed for the winning option to be valid
 
 ### Explanation
 1. We first find `winningOption` with a simple iteration through the votes received by each option.
@@ -52,13 +52,195 @@ A line can be expressed as `Y = tX + C`, where `t` is the gradient, and `C` shif
 `kncToken`: The KNC token contract
 `staking`: The staking contract
 `feeHandler`: The contract that stores the network fees (in ETH) and distrubution amount information
+`numberCampaigns`: No. of campaigns in total, used to generate a unique ID for each campaign
+
+## Getting Current Epoch Number
+Obtain the current epoch number of the staking contract
+
+---
+function **`getCurrentEpochNumber`**() public view returns (uint)
+
+#### Example
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+let currentEpochNum = await StakingContract.getCurrentEpochNumber().call();
+```
+
+## `NETWORK_FEE` Campaign Information
+While this section is specific to the `NETWORK_FEE` campaign type, the other methods in the [Reading Campaign Information]() are of relevance.
+
+### `latestNetworkFeeResult`
+Network fee (in basis points) charged for trades.
+
+#### Example
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+let result = await DAOContract.methods.latestNetworkFeeResult().call();
+```
+
+### `getLatestNetworkFeeData`
+
+### `getLatestNetworkFeeDataWithCache`
+
+### `networkFeeCamp`
+`networkFeeCamp[epoch] = uint`
+`NETWORK_FEE` campaign ID number for a given epoch.
+
+#### Example
+Get the `NETWORK_FEE` campaign ID number for epoch `5`.
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+
+let epochNum = new BN(5);
+let result = await DAOContract.methods.networkFeeCamp(epochNum).call();
+```
+
+
+
+
+
+
+## `FEE_HANDLER_BRR` Campaign Information
+While this section is specific to the `FEE_HANDLER_BRR` campaign type, the other methods in the [Reading Campaign Information]() are of relevance.
+
+### `latestBrrResult`
+Encoded BRR data (to save on storage). Call `latestBrrResultDecoded` for the more readable and understandable version.
+
+### `latestBrrResultDecoded`
+Returns the latest BRR data, current epoch number and block number for which BRR data expires.
+
+---
+function **`latestBrrResultDecoded`**() public view returns (uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
+
+**Returns:**
+| Parameter | Type | Description |
+| ---------- |:-------:|:-------------------:|
+| `burnInBps` | `uint` | Ratio (in basis points) of fees collected for burning KNC |
+| `rewardInBps` | `uint` | Ratio (in basis points) of fees collected for staker rewards |
+| `rebateInBps` | `uint` | Ratio (in basis points) of fees collected for reserve rebates |
+| `epoch` | `uint` | Current epoch of Staking and DAO contracts |
+| `expiryBlockNumber` | `uint` | Block number for which BRR becomes invalid |
+---
+**Notes:**
+- `epoch` has the same value as calling [`getCurrentEpochNumber()`]()
+- Unlike the `getLatestBRRData()` function below, this is a `view` function, and is meant to be used for reading the BRR data
+
+#### Example
+```js
+```
+
+### `getLatestBRRData`
+In addition to reading the latest BRR data, it also concludes a BRR campaign if necessary, thereby caching the latest BRR data as well.
+
+---
+function **getLatestBRRData()** public returns (uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
+
+**Returns:**
+| Parameter | Type | Description |
+| ---------- |:-------:|:-------------------:|
+| `burnInBps` | `uint` | Ratio (in basis points) of fees collected for burning KNC |
+| `rewardInBps` | `uint` | Ratio (in basis points) of fees collected for staker rewards |
+| `rebateInBps` | `uint` | Ratio (in basis points) of fees collected for reserve rebates |
+| `epoch` | `uint` | Current epoch of Staking and DAO contracts |
+| `expiryBlockNumber` | `uint` | Block number for which BRR becomes invalid |
+---
+**Notes:**
+- `epoch` has the same value as calling [`getCurrentEpochNumber()`]()
+- Unlike the `latestBrrResultDecoded()` function above, this function caches the BRR data too.
+
+#### Example
+```js
+
+```
+
+### `brrCampaign`
+
+
+
+
+
+
+
+
+
+
 
 ## Reading Campaign Information
+### `campExists`
+`campExists[campaignID] = bool`
+To determine a campaign exists given a campaign ID. Returns `true` if it does, `false` if it does not.
+
+#### Example
+See if campaign ID `5` exists.
+
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+
+let campaignID = new BN(5);
+let result = await DAOContract.methods.campExists(campaignID).call();
+```
+
+### `numberVotes`
+`numberVotes[stakerAddress][epoch] = uint`
+To determine the number of campaigns that a staker has voted for at a given epoch number.
+
+#### Example
+Get number of campaigns staker has voted for in epoch `5`.
+
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+
+let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
+let epochNum = new BN(5);
+let result = await DAOContract.methods.numberVotes(staker, epochNum).call();
+```
+
+### `hasClaimedReward`
+`hasClaimedReward[stakerAddress][epoch] = bool`
+To determine if a staker has claimed his reward for a given epoch. Returns `true` if he has claimed, `false` if he has not.
+
+#### Example
+See if staker has claimed his reward for epoch `5`.
+
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+
+let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
+let epochNum = new BN(5);
+let result = await DAOContract.methods.hasClaimedReward(staker, epochNum).call();
+```
+
+### `stakerVotedOption`
+`stakerVotedOption[stakerAddress][campID] = uint`
+To obtain the option number a staker voted on, for a campaign.
+
+#### Example
+See which option staker has voted on, for campaign ID `5`.
+
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+
+let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
+let campaignID = new BN(5);
+let result = await DAOContract.methods.stakerVotedOption(staker, campaignID).call();
+```
 
 
-
-
-### Deposit
+<!-- ### Deposit
 The first step for any user is to deposit KNC into the staking contract (in token wei).
 
 ---
@@ -118,287 +300,4 @@ txReceipt = await web3.eth.sendTransaction({
   data: txData
 });
 ```
-
-### Withdrawing KNC
-The user can withdraw KNC (in token wei) from the staking contract at any point in time. 
-
----
-function **`withdraw`**(uint amount) public
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `amount` | uint | KNC twei to be withdrawn |
----
-
-#### Example
-Withdraw 1000 KNC
-
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-const BN = web3.utils.BN;
-let tokenAmount = new BN(10).pow(new BN(21)); // 1000 KNC in twei
-
-txData = StakingContract.methods.withdraw(tokenAmount).encodeABI();
-
-txReceipt = await web3.eth.sendTransaction({
-  from: USER_WALLET_ADDRESS, //obtained from web3 interface
-  to: STAKING_CONTRACT_ADDRESS,
-  data: txData
-});
-```
-
-## Getting Current Epoch Number
-Obtain the current epoch number of the staking contract
-
----
-function **`getCurrentEpochNumber`**() public view returns (uint)
-
-#### Example
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-let currentEpochNum = await StakingContract.getCurrentEpochNumber().call();
-```
-
-## Reading Staking Data
-There are primarily 3 parameters of interest (apart from getting the current epoch number):
-|       Parameter      |                 Description                   |
-| ---------------------|:---------------------------------------------:|
-| `stake` | KNC amount staked by a staker |
-| `delegatedStake` | KNC amount delegated to a staker |
-| `delegatedAddress` / `dAddr` | Who the staker delegated his stake to |
-
-We can classify the APIs for reading staking data in 4 broad sections:
-- Reward percentage calculation for pool masters
-- Getting the above 3 parameters for the past epochs and the current epoch
-- Getting the above 3 parameters for the next epoch
-
-## Section 1: Reward calculation for pool masters
-### Staker Data Of An Epoch
-Obtains a staker's information for a specified epoch. Used for calculating reward percentage by pool masters (and the DAO contract). Kindly refer to [this example](faqs.md#2-how-do-i-make-use-of-the-getstakerdataforpastepoch-function-to-calculate-the-stake-and-reward-distribution-for-my-pool-members) for a walkthrough on reward calculation.
-
----
-function **`getStakerDataForPastEpoch`**(address staker, uint epoch) public view returns (uint _stake, uint _delegatedStake, address _delegatedAddress)
-
-**Inputs**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `staker` | address | Staker's wallet address |
-| `epoch` | uint | epoch number |
-
-**Returns:**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `_stake` | uint | `staker` stake amount |
-| `_delegatedStake` | uint | Stake amount delegated to `staker` by other stakers |
-| `_delegatedAddress` | address | Wallet address `staker` delegated his stake to |
----
-**Notes:**
-- Delegated stakes to `staker` are not forwarded to `delegatedAddress`. `staker` is still responsible for voting on behalf of all stakes delegated to him.
-
-#### Example
-Obtain staker's information (of address `0x12340000000000000000000000000000deadbeef`) at epoch 5.
-
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-let epoch = new BN(5);
-
-let result = await StakingContract.methods.getStakerDataForPastEpoch(staker, epoch).call();
-```
-
-## Section 2: Staking info of past and current epochs
-### Staker's KNC stake
-Obtains a staker's KNC stake for a specified epoch (up to the next epoch)
-
----
-function **getStake**(address staker, uint epoch) public view returns (uint)
-
-**Inputs**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `staker` | address | Staker's wallet address |
-| `epoch` | uint | epoch number |
-
-**Returns:**\
-`staker` KNC stake at `epoch`
----
-**Note:**
-`getStake(staker, N+1) == getLatestStakeBalance(staker)` where `N` is the current epoch number
-
-#### Example
-Obtain staker's KNC stake (of address `0x12340000000000000000000000000000deadbeef`) at epoch 5.
-
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-let epoch = new BN(5);
-
-let result = await StakingContract.methods.getStake(staker, epoch).call();
-```
-
-### Staker's delegated stake
-Obtains staking amount delegated to an address for a specified epoch (up to the next epoch)
-
----
-function **getDelegatedStake**(address staker, uint epoch) public view returns (uint)
-
-**Inputs**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `staker` | address | Staker's wallet address |
-| `epoch` | uint | epoch number |
-
-**Returns:**\
-Delegated stake amount to `staker` at `epoch`
----
-**Note:**
-`getDelegatedStake(staker, N+1) == getLatestDelegatedStake(staker)` where `N` is the current epoch number
-
-#### Example
-Obtain stake amount delegated to address `0x12340000000000000000000000000000deadbeef` at epoch 5.
-
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-let epoch = new BN(5);
-
-let result = await StakingContract.methods.getDelegatedStake(staker, epoch).call();
-```
-
-### Staker's delegated address
-Obtains the pool master's address of `staker` at a specified epoch (up to the next epoch)
-
----
-function **getDelegatedAddress**(address staker, uint epoch) public view returns (address)
-
-**Inputs**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `staker` | address | Staker's wallet address |
-| `epoch` | uint | epoch number |
-
-**Returns:**\
-`staker` pool master address
----
-**Notes:**
-- `getDelegatedAddress(staker, N+1) == getLatestDelegatedAddress(staker)` where `N` is the current epoch number
-- If user is not a staker, null address is returned
-- If user did not delegate to anyone, `staker` address is returned
-
-#### Example
-Get `0x12340000000000000000000000000000deadbeef` pool master's address at epoch 5.
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-let epoch = new BN(5);
-
-let result = await StakingContract.methods.getDelegatedAddress(staker, epoch).call();
-```
-
-## Section 3: Staking info of the next epoch
-### Staker's KNC stake
-Obtains a staker's KNC stake for the next epoch
-
----
-function **getLatestStakeBalance**(address staker) public view returns (uint)
-
-**Inputs**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `staker` | address | Staker's wallet address |
-
-**Returns:**\
-`staker` KNC stake for the next epoch.
----
-**Note:**
-`getLatestStakeBalance(staker) == getStake(staker, N+1)` where `N` is the current epoch number
-
-#### Example
-Obtain staker's KNC stake (of address `0x12340000000000000000000000000000deadbeef`) for the next epoch.
-
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-
-let result = await StakingContract.methods.getLatestStakeBalance(staker).call();
-```
-
-### Staker's delegated stake
-Obtains staking amount delegated to an address for the next epoch
-
----
-function **getDelegatedStake**(address staker) public view returns (uint)
-
-**Inputs**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `staker` | address | Staker's wallet address |
-
-**Returns:**\
-Delegated stake amount to `staker` for the next epoch.
----
-**Note:**
-`getLatestDelegatedStake(staker) == getDelegatedStake(staker, N+1)` where `N` is the current epoch number
-
-#### Example
-Obtain stake amount delegated to address `0x12340000000000000000000000000000deadbeef` for the next epoch.
-
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-
-let result = await StakingContract.methods.getLatestDelegatedStake(staker).call();
-```
-
-### Staker's delegated address
-Obtains the pool master's address of `staker` for the next epoch
-
----
-function **getLatestDelegatedAddress**(address staker, uint epoch) public view returns (address)
-
-**Inputs**
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `staker` | address | Staker's wallet address |
-
-**Returns:**\
-`staker` pool master address
----
-**Notes:**
-- `getLatestDelegatedAddress(staker) == getDelegatedAddress(staker, N+1)` where `N` is the current epoch number
-- If user is not a staker, null address is returned
-- If user did not delegate to anyone, `staker` address is returned
-
-#### Example
-Get `0x12340000000000000000000000000000deadbeef` pool master's address for the next epoch.
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-
-let result = await StakingContract.methods.getLatestDelegatedAddress(staker).call();
-```
+``` -->
