@@ -7,11 +7,11 @@ The DAO contract primarily provides the following functionalities:
 - Claiming staker rewards for participation in voting for campaigns
 
 For stakers and pool masters, the actions you will be interested in are:
-1. Viewing Campaign Details
-2. Voting for a campaign
-3. Claim Rewards
+1. [Viewing Campaign Details]()
+2. [Voting for a campaign]()
+3. [Claim Rewards]()
 
- The voting formula used for deciding the winning options of a campaign may also be of interest.
+ The [voting formula](#voting-formula) used for deciding the winning options of a campaign may also be of interest.
 
 ## Creation and cancellation of campaigns
 These actions can only be carried out by the `campaignCreator`.
@@ -21,6 +21,8 @@ There are currently 3 different types of campaigns:
 1. `GENERAL`: A generic campaign. 
 2. `NETWORK_FEE`: The fee amount (in basis points) to be charged for every trade.
 3. `FEE_HANDLER_BRR`: Proportion of fees to be **burnt**, given to stakers as **rewards**, and given to reserves as **rebates** for liquidity contribution.
+
+Note that there can only be a maximum of 1 campaign per epoch for the `NETWORK_FEE` and `FEE_HANDLER_RR` campaign types.
 
 ## Voting Formula
 The formula was designed to be simple enough such that it can be implemented on-chain, and is gas efficient for calculations. Hence, the "1 token 1 vote" idea is used for its simplicity. A quorum is also defined, in order for a winning option to be considered valid.
@@ -46,16 +48,16 @@ A line can be expressed as `Y = tX + C`, where `t` is the gradient, and `C` shif
 5. Otherwise, we have to check that `winningOption >= minThreshold` before considering it to be a valid winning option.
 
 ## Public DAO Variables
-`MAX_EPOCH_CAMPS`: Maximum number of campaigns that can be created in an epoch by `campaignCreator`
-`MAX_CAMP_OPTIONS`: Maximum number of options that a campaign can have
-`MIN_CAMP_DURATION_BLOCKS`: Minimum duration for a campaign
-`kncToken`: The KNC token contract
-`staking`: The staking contract
-`feeHandler`: The contract that stores the network fees (in ETH) and distrubution amount information
-`numberCampaigns`: No. of campaigns in total, used to generate a unique ID for each campaign
+- `MAX_EPOCH_CAMPS`: Maximum number of campaigns that can be created in an epoch by `campaignCreator`
+- `MAX_CAMP_OPTIONS`: Maximum number of options that a campaign can have
+- `MIN_CAMP_DURATION_BLOCKS`: Minimum duration for a campaign
+- `kncToken`: The KNC token contract
+- `staking`: The staking contract
+- `feeHandler`: The contract that stores the network fees (in ETH) and distrubution amount information
+- `numberCampaigns`: No. of campaigns in total, used to generate a unique ID for each campaign
 
 ## Getting Current Epoch Number
-Obtain the current epoch number of the staking contract
+Obtain the current epoch number of the DAO contract
 
 ---
 function **`getCurrentEpochNumber`**() public view returns (uint)
@@ -69,7 +71,22 @@ let currentEpochNum = await StakingContract.getCurrentEpochNumber().call();
 ```
 
 ## `NETWORK_FEE` Campaign Information
-While this section is specific to the `NETWORK_FEE` campaign type, the other methods in the [Reading Campaign Information]() are of relevance.
+While this section is specific to the `NETWORK_FEE` campaign type, the other sections below are of relevance.
+
+### `networkFeeCamp`
+`networkFeeCamp[epoch] = uint`
+`NETWORK_FEE` campaign ID number for a given epoch. Note that there can only be a maximum of 1 `NETWORK_FEE` campaign per epoch.
+
+#### Example
+Get the `NETWORK_FEE` campaign ID number for epoch `5`.
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+
+let epochNum = new BN(5);
+let result = await DAOContract.methods.networkFeeCamp(epochNum).call();
+```
 
 ### `latestNetworkFeeResult`
 Network fee (in basis points) charged for trades.
@@ -83,31 +100,77 @@ let result = await DAOContract.methods.latestNetworkFeeResult().call();
 ```
 
 ### `getLatestNetworkFeeData`
+Gets the network fee (in basis points) charged for trades, and the block number for which it expires.
 
-### `getLatestNetworkFeeDataWithCache`
+---
+function **getLatestNetworkFeeData`**() public view returns(uint feeInBps, uint expiryBlockNumber)
 
-### `networkFeeCamp`
-`networkFeeCamp[epoch] = uint`
-`NETWORK_FEE` campaign ID number for a given epoch.
+**Returns:**
+| Parameter | Type | Description |
+| ---------- |:-------:|:-------------------:|
+| `feeInBps` | `uint` | Network fee (in basis points) to be charged for trades |
+| `expiryBlockNumber` | `uint` | Block number for which BRR becomes invalid |
+---
+**Notes:**
+- `epoch` has the same value as calling [`getCurrentEpochNumber()`](#getting-current-epoch-number)
+- Unlike the `getLatestNetworkFeeDataWithCache()` function below, this is a `view` function, and does not cache the data
 
 #### Example
-Get the `NETWORK_FEE` campaign ID number for epoch `5`.
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+let result = await DAOContract.methods.getLatestNetworkFeeData().call();
+```
+
+### `getLatestNetworkFeeDataWithCache`
+In addition to reading the latest network fee data, it concludes the network fee campaign if necessary, thereby caching the data as well.
+
+---
+function **getLatestNetworkFeeDataWithCache`**() public returns(uint feeInBps, uint expiryBlockNumber)
+
+**Returns:**
+| Parameter | Type | Description |
+| ---------- |:-------:|:-------------------:|
+| `feeInBps` | `uint` | Network fee (in basis points) to be charged for trades |
+| `expiryBlockNumber` | `uint` | Block number for which BRR becomes invalid |
+---
+**Notes:**
+- `epoch` has the same value as calling [`getCurrentEpochNumber()`](#getting-current-epoch-number)
+- Unlike the `getLatestNetworkFeeDataWithCache()` function above, the network fee data is cached as well.
+
+#### Example
+```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+txData = DAOContract.methods.getLatestNetworkFeeDataWithCache().encodeABI();
+
+txReceipt = await web3.eth.sendTransaction({
+  from: USER_WALLET_ADDRESS, //obtained from web3 interface
+  to: DAO_CONTRACT_ADDRESS,
+  data: txData
+});
+```
+
+
+## `FEE_HANDLER_BRR` Campaign Information
+While this section is specific to the `FEE_HANDLER_BRR` campaign type, the other sections below are of relevance.
+
+### `brrCampaign`
+`brrCampaign[epoch] = uint`
+`FEE_HANDLER_BRR` campaign ID number for a given epoch. Note that there can only be a maximum of 1 `FEE_HANDLER_BRR` campaign per epoch.
+
+#### Example
+Get the `FEE_HANDLER_BRR` campaign ID number for epoch `5`.
 ```js
 // DISCLAIMER: Code snippets in this guide are just examples and you
 // should always do your own testing. If you have questions, visit our
 // https://t.me/KyberDeveloper
 
 let epochNum = new BN(5);
-let result = await DAOContract.methods.networkFeeCamp(epochNum).call();
+let result = await DAOContract.methods.brrCampaign(epochNum).call();
 ```
-
-
-
-
-
-
-## `FEE_HANDLER_BRR` Campaign Information
-While this section is specific to the `FEE_HANDLER_BRR` campaign type, the other methods in the [Reading Campaign Information]() are of relevance.
 
 ### `latestBrrResult`
 Encoded BRR data (to save on storage). Call `latestBrrResultDecoded` for the more readable and understandable version.
@@ -128,11 +191,15 @@ function **`latestBrrResultDecoded`**() public view returns (uint burnInBps, uin
 | `expiryBlockNumber` | `uint` | Block number for which BRR becomes invalid |
 ---
 **Notes:**
-- `epoch` has the same value as calling [`getCurrentEpochNumber()`]()
-- Unlike the `getLatestBRRData()` function below, this is a `view` function, and is meant to be used for reading the BRR data
+- `epoch` has the same value as calling [`getCurrentEpochNumber()`](#getting-current-epoch-number)
+- Unlike the `getLatestBRRData()` function below, this is a `view` function, and does not cache the data
 
 #### Example
 ```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+let result = await DAOContract.methods.latestBrrResultDecoded().call();
 ```
 
 ### `getLatestBRRData`
@@ -151,24 +218,22 @@ function **getLatestBRRData()** public returns (uint burnInBps, uint rewardInBps
 | `expiryBlockNumber` | `uint` | Block number for which BRR becomes invalid |
 ---
 **Notes:**
-- `epoch` has the same value as calling [`getCurrentEpochNumber()`]()
+- `epoch` has the same value as calling [`getCurrentEpochNumber()`](#getting-current-epoch-number)
 - Unlike the `latestBrrResultDecoded()` function above, this function caches the BRR data too.
 
 #### Example
 ```js
+// DISCLAIMER: Code snippets in this guide are just examples and you
+// should always do your own testing. If you have questions, visit our
+// https://t.me/KyberDeveloper
+txData = DAOContract.methods.getLatestBRRData().encodeABI();
 
+txReceipt = await web3.eth.sendTransaction({
+  from: USER_WALLET_ADDRESS, //obtained from web3 interface
+  to: DAO_CONTRACT_ADDRESS,
+  data: txData
+});
 ```
-
-### `brrCampaign`
-
-
-
-
-
-
-
-
-
 
 
 ## Reading Campaign Information
@@ -188,6 +253,10 @@ let campaignID = new BN(5);
 let result = await DAOContract.methods.campExists(campaignID).call();
 ```
 
+
+## Voting for Campaigns
+This section details all the APIs related to voting for a campaign, and staker-centric data related to campaign options and results.
+
 ### `numberVotes`
 `numberVotes[stakerAddress][epoch] = uint`
 To determine the number of campaigns that a staker has voted for at a given epoch number.
@@ -203,23 +272,6 @@ Get number of campaigns staker has voted for in epoch `5`.
 let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
 let epochNum = new BN(5);
 let result = await DAOContract.methods.numberVotes(staker, epochNum).call();
-```
-
-### `hasClaimedReward`
-`hasClaimedReward[stakerAddress][epoch] = bool`
-To determine if a staker has claimed his reward for a given epoch. Returns `true` if he has claimed, `false` if he has not.
-
-#### Example
-See if staker has claimed his reward for epoch `5`.
-
-```js
-// DISCLAIMER: Code snippets in this guide are just examples and you
-// should always do your own testing. If you have questions, visit our
-// https://t.me/KyberDeveloper
-
-let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
-let epochNum = new BN(5);
-let result = await DAOContract.methods.hasClaimedReward(staker, epochNum).call();
 ```
 
 ### `stakerVotedOption`
@@ -239,65 +291,53 @@ let campaignID = new BN(5);
 let result = await DAOContract.methods.stakerVotedOption(staker, campaignID).call();
 ```
 
-
-<!-- ### Deposit
-The first step for any user is to deposit KNC into the staking contract (in token wei).
+### `vote`
+Vote for a campaign.
 
 ---
-function **`deposit`**(uint amount) public
+function **vote**(uint campID, uint option) public
+
+**Inputs**
 | Parameter | Type | Description |
 | ---------- |:-------:|:-------------------:|
-| `amount` | uint | KNC twei to be deposited |
----
-Note: The user must have given an allowance to the staking contract, ie. made the following function call
-`KNC.approve(stakingContractaddress, someAllowance)`
+| `campID` | `uint` | Campaign ID voting on |
+| `option` | `uint` | Option ID |
 
 #### Example
-Deposit 1000 KNC
+Vote for option `3` for campaign ID `5`.
 
 ```js
 // DISCLAIMER: Code snippets in this guide are just examples and you
 // should always do your own testing. If you have questions, visit our
 // https://t.me/KyberDeveloper
 
-const BN = web3.utils.BN;
-let tokenAmount = new BN(10).pow(new BN(21)); // 1000 KNC in twei
-
-txData = StakingContract.methods.deposit(tokenAmount).encodeABI();
+let campaignID = new BN(5);
+let optionID = new BN(3);
+txData = DAOContract.methods.vote(campaignID, optionID).encodeABI();
 
 txReceipt = await web3.eth.sendTransaction({
-  from: USER_WALLET_ADDRESS, //obtained from web3 interface
-  to: STAKING_CONTRACT_ADDRESS,
+  from: VOTING_WALLET_ADDRESS,
+  to: DAO_CONTRACT_ADDRESS,
   data: txData
 });
 ```
 
-### Delegate
-Once the user has staked some KNC, he can delegate his **entire** KNC stake to a pool master (with address `dAddr`), who will vote on his behalf. Note that we do not support partial stake delegation. Also, users can only have a maximum of 1 pool master.
+## Claiming Rewards
+This section details all the APIs related to claiming rewards.
 
----
-function **`delegate`**(address dAddr) public
-| Parameter | Type | Description |
-| ---------- |:-------:|:-------------------:|
-| `dAddr` | address | Pool master's wallet address |
----
+### `hasClaimedReward`
+`hasClaimedReward[stakerAddress][epoch] = bool`
+To determine if a staker has claimed his reward for a given epoch. Returns `true` if he has claimed, `false` if he has not.
 
 #### Example
-User delegates his stake to a pool master (of address `0x12340000000000000000000000000000deadbeef`) who will vote on the user's behalf.
+See if staker has claimed his reward for epoch `5`.
 
 ```js
 // DISCLAIMER: Code snippets in this guide are just examples and you
 // should always do your own testing. If you have questions, visit our
 // https://t.me/KyberDeveloper
 
-let dAddr = "0x12340000000000000000000000000000deadbeef" //pool master's address
-
-txData = StakingContract.methods.delegate(dAddr).encodeABI();
-
-txReceipt = await web3.eth.sendTransaction({
-  from: USER_WALLET_ADDRESS, //obtained from web3 interface
-  to: STAKING_CONTRACT_ADDRESS,
-  data: txData
-});
+let staker = "0x12340000000000000000000000000000deadbeef" //staker's address
+let epochNum = new BN(5);
+let result = await DAOContract.methods.hasClaimedReward(staker, epochNum).call();
 ```
-``` -->
